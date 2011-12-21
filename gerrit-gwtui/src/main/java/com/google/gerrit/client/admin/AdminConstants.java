@@ -40,6 +40,7 @@ public interface AdminConstants extends Constants {
   String useSignedOffBy();
   String requireShortMessage();
   String requireChangeID();
+  String allowTopicReview();
   String headingGroupOptions();
   String isVisibleToAll();
   String emailOnlyAuthors();

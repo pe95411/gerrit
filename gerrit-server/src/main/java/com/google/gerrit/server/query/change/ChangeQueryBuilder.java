@@ -35,6 +35,7 @@ import com.google.gerrit.server.query.IntPredicate;
 import com.google.gerrit.server.query.Predicate;
 import com.google.gerrit.server.query.QueryBuilder;
 import com.google.gerrit.server.query.QueryParseException;
+import com.google.gerrit.server.query.SingleGroupUser;
 import com.google.gwtorm.client.OrmException;
 import com.google.inject.Inject;
 import com.google.inject.Provider;

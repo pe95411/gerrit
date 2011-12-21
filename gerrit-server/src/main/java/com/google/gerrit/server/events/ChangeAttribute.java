@@ -14,7 +14,7 @@
 
 package com.google.gerrit.server.events;
 
-import com.google.gerrit.reviewdb.Change;
+import com.google.gerrit.reviewdb.AbstractEntity;
 
 import java.util.List;
 
@@ -32,7 +32,7 @@ public class ChangeAttribute {
     public Long lastUpdated;
     public String sortKey;
     public Boolean open;
-    public Change.Status status;
+    public AbstractEntity.Status status;
     public List<MessageAttribute> comments;
 
     public List<TrackingIdAttribute> trackingIds;

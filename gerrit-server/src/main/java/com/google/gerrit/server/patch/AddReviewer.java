@@ -25,6 +25,7 @@ import com.google.gerrit.reviewdb.Change;
 import com.google.gerrit.reviewdb.PatchSet;
 import com.google.gerrit.reviewdb.PatchSetApproval;
 import com.google.gerrit.reviewdb.ReviewDb;
+import com.google.gerrit.server.ChangeUtil;
 import com.google.gerrit.server.IdentifiedUser;
 import com.google.gerrit.server.account.AccountResolver;
 import com.google.gerrit.server.account.GroupCache;
@@ -38,7 +39,6 @@ import com.google.inject.assistedinject.Assisted;
 
 import org.eclipse.jgit.lib.Config;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -189,21 +189,8 @@ public class AddReviewer implements Callable<ReviewerResult> {
       return result;
     }
 
-    // Add the reviewers to the database
-    //
-    final Set<Account.Id> added = new HashSet<Account.Id>();
-    final List<PatchSetApproval> toInsert = new ArrayList<PatchSetApproval>();
-    final PatchSet.Id psid = control.getChange().currentPatchSetId();
-    for (final Account.Id reviewer : reviewerIds) {
-      if (!exists(psid, reviewer)) {
-        // This reviewer has not entered an approval for this change yet.
-        //
-        final PatchSetApproval myca = dummyApproval(psid, reviewer);
-        toInsert.add(myca);
-        added.add(reviewer);
-      }
-    }
-    db.patchSetApprovals().insert(toInsert);
+    final Set<Account.Id> added = ChangeUtil.addReviewers(reviewerIds, db, control.getChange().currentPatchSetId(),
+        addReviewerCategoryId, currentUser);
 
     // Email the reviewers
     //

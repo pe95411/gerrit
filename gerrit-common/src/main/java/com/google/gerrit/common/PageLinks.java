@@ -16,11 +16,12 @@ package com.google.gerrit.common;
 
 import com.google.gerrit.common.data.AccountInfo;
 import com.google.gerrit.common.data.ChangeInfo;
+import com.google.gerrit.reviewdb.AbstractEntity.Status;
 import com.google.gerrit.reviewdb.Account;
 import com.google.gerrit.reviewdb.Change;
 import com.google.gerrit.reviewdb.PatchSet;
 import com.google.gerrit.reviewdb.Project;
-import com.google.gerrit.reviewdb.Change.Status;
+import com.google.gerrit.reviewdb.Topic;
 import com.google.gwtorm.client.KeyUtil;
 
 public class PageLinks {
@@ -41,6 +42,8 @@ public class PageLinks {
   public static final String MINE = "/";
   public static final String ADMIN_GROUPS = "/admin/groups/";
   public static final String ADMIN_PROJECTS = "/admin/projects/";
+  public static final String ENTITY_TOPIC = "entity:topic";
+  public static final String ENTITY_CHANGE = "entity:change";
 
   public static String toChange(final ChangeInfo c) {
     return toChange(c.getId());
@@ -52,6 +55,10 @@ public class PageLinks {
 
   public static String toChange(final PatchSet.Id ps) {
     return "/c/" + ps.getParentKey() + "/" + ps.get();
+  }
+
+  public static String toTopic(final Topic.Id topicId) {
+    return "/t/" + topicId.toString() + "/";
   }
 
   public static String toProjectAcceess(final Project.NameKey p) {
@@ -66,6 +73,10 @@ public class PageLinks {
     return "/dashboard/" + acct.toString();
   }
 
+  public static String toAccountTopicDashboard(final Account.Id acct) {
+    return "/dashboard/topic/" + acct.toString();
+  }
+
   public static String toChangeQuery(final String query) {
     return toChangeQuery(query, TOP);
   }
@@ -73,6 +84,19 @@ public class PageLinks {
   public static String toChangeQuery(String query, String page) {
     query = KeyUtil.encode(query).replaceAll("%3[Aa]", ":");
     return "/q/" + query + "," + page;
+  }
+
+  public static String toTopicQuery(final String query) {
+    return toTopicQuery(query, TOP);
+  }
+
+  public static String toTopicQuery(String query, String page) {
+    query = KeyUtil.encode(query).replaceAll("%3[Aa]", ":");
+    return "/q/" + ENTITY_TOPIC + " " + query + "," + page;
+  }
+
+  public static String toQuery(String query) {
+    return "/q/" + query + "," + TOP;
   }
 
   public static String projectQuery(Project.NameKey proj, Status status) {

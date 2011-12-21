@@ -17,10 +17,8 @@ package com.google.gerrit.reviewdb;
 import com.google.gwtorm.client.Column;
 import com.google.gwtorm.client.CompoundKey;
 
-import java.sql.Timestamp;
-
 /** An approval (or negative approval) on a patch set. */
-public final class PatchSetApproval {
+public final class PatchSetApproval extends SetApproval<PatchSet.Id> {
   public static class Key extends CompoundKey<PatchSet.Id> {
     private static final long serialVersionUID = 1L;
 
@@ -60,26 +58,6 @@ public final class PatchSetApproval {
   @Column(id = 1, name = Column.NONE)
   protected Key key;
 
-  /**
-   * Value assigned by the user.
-   * <p>
-   * The precise meaning of "value" is up to each category.
-   * <p>
-   * In general:
-   * <ul>
-   * <li><b>&lt; 0:</b> The approval is rejected/revoked.</li>
-   * <li><b>= 0:</b> No indication either way is provided.</li>
-   * <li><b>&gt; 0:</b> The approval is approved/positive.</li>
-   * </ul>
-   * and in the negative and positive direction a magnitude can be assumed.The
-   * further from 0 the more assertive the approval.
-   */
-  @Column(id = 2)
-  protected short value;
-
-  @Column(id = 3)
-  protected Timestamp granted;
-
   /** <i>Cached copy of Change.open.</i> */
   @Column(id = 4)
   protected boolean changeOpen;
@@ -118,28 +96,18 @@ public final class PatchSetApproval {
     return key.accountId;
   }
 
+  @Override
   public ApprovalCategory.Id getCategoryId() {
     return key.categoryId;
-  }
-
-  public short getValue() {
-    return value;
-  }
-
-  public void setValue(final short v) {
-    value = v;
-  }
-
-  public Timestamp getGranted() {
-    return granted;
-  }
-
-  public void setGranted() {
-    granted = new Timestamp(System.currentTimeMillis());
   }
 
   public void cache(final Change c) {
     changeOpen = c.open;
     changeSortKey = c.sortKey;
+  }
+
+  @Override
+  public PatchSet.Id getSetId() {
+    return getPatchSetId();
   }
 }

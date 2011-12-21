@@ -16,6 +16,7 @@ package com.google.gerrit.client;
 
 import static com.google.gerrit.common.PageLinks.ADMIN_GROUPS;
 import static com.google.gerrit.common.PageLinks.ADMIN_PROJECTS;
+import static com.google.gerrit.common.PageLinks.ENTITY_TOPIC;
 import static com.google.gerrit.common.PageLinks.MINE;
 import static com.google.gerrit.common.PageLinks.REGISTER;
 import static com.google.gerrit.common.PageLinks.SETTINGS;
@@ -61,6 +62,10 @@ import com.google.gerrit.client.changes.PublishCommentScreen;
 import com.google.gerrit.client.changes.QueryScreen;
 import com.google.gerrit.client.patches.PatchScreen;
 import com.google.gerrit.client.rpc.GerritCallback;
+import com.google.gerrit.client.topics.AccountTopicDashboardScreen;
+import com.google.gerrit.client.topics.PublishTopicCommentScreen;
+import com.google.gerrit.client.topics.TopicQueryScreen;
+import com.google.gerrit.client.topics.TopicScreen;
 import com.google.gerrit.client.ui.Screen;
 import com.google.gerrit.common.PageLinks;
 import com.google.gerrit.common.auth.SignInMode;
@@ -69,9 +74,11 @@ import com.google.gerrit.common.data.PatchSetDetail;
 import com.google.gerrit.reviewdb.Account;
 import com.google.gerrit.reviewdb.AccountGroup;
 import com.google.gerrit.reviewdb.Change;
+import com.google.gerrit.reviewdb.ChangeSet;
 import com.google.gerrit.reviewdb.Patch;
 import com.google.gerrit.reviewdb.PatchSet;
 import com.google.gerrit.reviewdb.Project;
+import com.google.gerrit.reviewdb.Topic;
 import com.google.gwt.core.client.GWT;
 import com.google.gwt.core.client.RunAsyncCallback;
 import com.google.gwt.user.client.Window;
@@ -101,6 +108,11 @@ public class Dispatcher {
     } else {
       return toPatchUnified(id);
     }
+  }
+
+  public static String toPublish(ChangeSet.Id cs) {
+    Topic.Id c = cs.getParentKey();
+    return "/t/" + c + "/" + cs.get() + ",publish";
   }
 
   public static String toPublish(PatchSet.Id ps) {
@@ -154,17 +166,19 @@ public class Dispatcher {
 
   private static void select(final String token) {
     if (matchPrefix("/q/", token)) {
-      query(token);
-
+      selectQuery(token);
     } else if (matchPrefix("/c/", token)) {
       change(token);
 
+    } else if (matchPrefix("/t/", token)) {
+      topic(token);
+
     } else if (matchExact(MINE, token)) {
       Gerrit.display(token, mine(token));
-
+    } else if (matchPrefix("/dashboard/topic/", token)) {
+      topicDashboard(token);
     } else if (matchPrefix("/dashboard/", token)) {
       dashboard(token);
-
     } else if (matchExact(SETTINGS, token) //
         || matchPrefix("/settings/", token) //
         || matchExact("register", token) //
@@ -197,6 +211,21 @@ public class Dispatcher {
 
     } else {
       Gerrit.display(token, new NotFoundScreen());
+    }
+  }
+
+  private static void selectQuery(final String token) {
+    String s = skip(token);
+    final int c = s.indexOf(',');
+    s = s.substring(0, c);
+    // if the entity type is topic or a topic id as been entered
+    if(s.contains(ENTITY_TOPIC) || s.matches("^[tT][\\w\\-]{4,}.*$"))
+    {
+      topicQuery(token);
+    }
+    else
+    {
+      query(token);
     }
   }
 
@@ -277,7 +306,6 @@ public class Dispatcher {
 
   private static String legacyChange(final String token) {
     final String s = skip(token);
-    final String q = "patchset=";
     final String t[] = s.split(",", 2);
     if (t.length > 1 && matchPrefix("patchset=", t[1])) {
       return PageLinks.toChange(PatchSet.Id.parse(t[0] + "," + skip(t[1])));
@@ -334,6 +362,12 @@ public class Dispatcher {
     Gerrit.display(token, new QueryScreen(s.substring(0, c), s.substring(c + 1)));
   }
 
+  private static void topicQuery(String token) {
+    String s = skip(token);
+    final int c = s.indexOf(',');
+    Gerrit.display(token, new TopicQueryScreen(s.substring(0, c), s.substring(c + 1)));
+  }
+
   private static Screen mine(final String token) {
     if (Gerrit.isSignedIn()) {
       return new AccountDashboardScreen(Gerrit.getUserAccount().getId());
@@ -348,6 +382,11 @@ public class Dispatcher {
   private static void dashboard(final String token) {
     Gerrit.display(token, //
         new AccountDashboardScreen(Account.Id.parse(skip(token))));
+  }
+
+  private static void topicDashboard(final String token) {
+    Gerrit.display(token,
+        new AccountTopicDashboardScreen(Account.Id.parse(skip(token))));
   }
 
   private static void change(final String token) {
@@ -401,6 +440,51 @@ public class Dispatcher {
     }
   }
 
+  private static void topic(final String token) {
+    String rest = skip(token);
+    int c = rest.lastIndexOf(',');
+    String panel = null;
+    if (0 <= c) {
+      panel = rest.substring(c + 1);
+      rest = rest.substring(0, c);
+    }
+
+    Topic.Id id;
+    int s = rest.indexOf('/');
+    if (0 <= s) {
+      id = Topic.Id.parse(rest.substring(0, s));
+      rest = rest.substring(s + 1);
+    } else {
+      id = Topic.Id.parse(rest);
+      rest = "";
+    }
+
+    if (rest.isEmpty()) {
+      Gerrit.display(token, panel== null //
+          ? new TopicScreen(id) //
+          : new NotFoundScreen());
+      return;
+    }
+
+    String csIdStr;
+    s = rest.indexOf('/');
+    if (0 <= s) {
+      csIdStr = rest.substring(0, s);
+    } else {
+      csIdStr = rest;
+    }
+
+    ChangeSet.Id cs = new ChangeSet.Id(id, Integer.parseInt(csIdStr));
+
+    if (panel == null) {
+      Gerrit.display(token, new TopicScreen(cs));
+    } else if ("publish".equals(panel)) {
+      publish(cs);
+    } else {
+      Gerrit.display(token, new NotFoundScreen());
+    }
+  }
+
   private static void publish(final PatchSet.Id ps) {
     String token = toPublish(ps);
     new AsyncSplit(token) {
@@ -410,6 +494,19 @@ public class Dispatcher {
 
       private Screen select() {
         return new PublishCommentScreen(ps);
+      }
+    }.onSuccess();
+  }
+
+  private static void publish(final ChangeSet.Id cs) {
+    String token = toPublish(cs);
+    new AsyncSplit(token) {
+      public void onSuccess() {
+        Gerrit.display(token, select());
+      }
+
+      private Screen select() {
+        return new PublishTopicCommentScreen(cs);
       }
     }.onSuccess();
   }
@@ -696,6 +793,14 @@ public class Dispatcher {
 
   private static String skip(String token) {
     return token.substring(prefixlen);
+  }
+
+  private static boolean matchAnywhere(String want, String token) {
+    if (token.contains(want)) {
+      return true;
+    } else {
+      return false;
+    }
   }
 
   private static abstract class AsyncSplit implements RunAsyncCallback {
